@@ -1,13 +1,17 @@
-# libmd
-set (libname ${LIB_DEEPMD})
+set(libname ${LIB_DEEPMD})
+set(CMAKE_CXX_STANDARD 11)
 
 file(GLOB LIB_SRC src/*.cc src/*.cpp)
 file(GLOB INC_SRC include/*.h ${CMAKE_CURRENT_BINARY_DIR}/version.h)
 
 add_library(${libname} SHARED ${LIB_SRC})
+message(${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(${libname} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
+message("CUDA_LIBRARIES: ${CUDA_LIBRARIES}")
+message("CUDA_INCLUDE_DIRS: ${CUDA_INCLUDE_DIRS}")
 if (USE_CUDA_TOOLKIT)
+  message("------->USE_CUDA_TOOLKIT<-----------")
   add_definitions("-DGOOGLE_CUDA")
   add_subdirectory(src/cuda)
   set (EXTRA_LIBS ${EXTRA_LIBS} deepmd_op_cuda)

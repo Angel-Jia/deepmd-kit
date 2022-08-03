@@ -78,7 +78,7 @@ void memcpy_host_to_device(
     FPTYPE * device, 
     const std::vector<FPTYPE> &host) 
 {
-  DPErrcheck(cudaMemcpy(device, &host[0], sizeof(FPTYPE) * host.size(), cudaMemcpyHostToDevice));  
+  DPErrcheck(cudaMemcpy(device, &host[0], sizeof(FPTYPE) * host.size(), cudaMemcpyHostToDevice));
 }
 
 template <typename FPTYPE>
@@ -87,7 +87,7 @@ void memcpy_host_to_device(
     const FPTYPE * host,
     const int size) 
 {
-  DPErrcheck(cudaMemcpy(device, host, sizeof(FPTYPE) * size, cudaMemcpyHostToDevice));  
+  DPErrcheck(cudaMemcpy(device, host, sizeof(FPTYPE) * size, cudaMemcpyHostToDevice));
 }
 
 template <typename FPTYPE>
