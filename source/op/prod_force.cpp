@@ -1,8 +1,8 @@
 #include "torch/torch.h"
 #include "torch/extension.h"
 
-#include "prod_force.h"
 #include "errors.h"
+#include "prod_force.h"
 #include "prod_force_grad.h"
 
 template<typename FPTYPE>
@@ -91,10 +91,12 @@ torch::Tensor prod_force_se_a(torch::Tensor net_deriv_tensor, torch::Tensor in_d
     TORCH_CHECK((nlist_tensor.sizes().size() == 2), "Dim of nlist should be 2");
     TORCH_CHECK((natoms_tensor.sizes().size() == 1), "Dim of natoms should be 1");
     TORCH_CHECK((natoms_tensor.size(0) >= 3), "number of atoms should be larger than (or equal to) 3");
+
+    TORCH_CHECK((natoms_tensor.dtype() == torch::kInt32), "Type of natoms should be int64");
     TORCH_CHECK(natoms_tensor.device().type() == torch::kCPU, "");
-    const int *natoms = natoms_tensor.data_ptr<int>();
-    int nloc = natoms[0];
-    int nall = natoms[1];
+    auto natoms = natoms_tensor.flatten();
+    int nloc = natoms[0].item<int>();
+    int nall = natoms[1].item<int>();
     int nframes = net_deriv_tensor.size(0);
     int ndescrpt = net_deriv_tensor.size(1) / nloc;
     int nnei = nlist_tensor.size(1) / nloc;
@@ -147,12 +149,13 @@ torch::Tensor prod_force_se_a_grad(torch::Tensor grad_tensor, torch::Tensor net_
     TORCH_CHECK((in_deriv_shape.size() == 2), "Dim of input deriv should be 2");
     TORCH_CHECK((nlist_shape.size() == 2), "Dim of nlist should be 2");
     TORCH_CHECK((natoms_tensor.sizes().size() == 1), "Dim of natoms should be 1");
+    TORCH_CHECK((natoms_tensor.dtype() == torch::kInt32), "Type of natoms should be int32");
+    TORCH_CHECK((natoms_tensor.device().type() == torch::kCPU), "");
 
     TORCH_CHECK((natoms_tensor.size(0) >= 3), "number of atoms should be larger than (or equal to) 3");
-    auto natoms	= natoms_tensor.flatten().data_ptr<int>();
 
     int nframes = net_deriv_tensor.size(0);
-    int nloc = (*natoms);
+    int nloc = natoms_tensor.flatten()[0].item<int>();
     int ndescrpt = net_deriv_tensor.size(1) / nloc;
     int nnei = nlist_tensor.size(1) / nloc;
 

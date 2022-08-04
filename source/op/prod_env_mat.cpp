@@ -646,6 +646,7 @@ std::vector<torch::Tensor> prod_env_mat_a(torch::Tensor coord_tensor, torch::Ten
     TORCH_CHECK(avg_tensor.sizes().size() == 2, "");
     TORCH_CHECK(std_tensor.sizes().size() == 2, "");
     TORCH_CHECK(natoms_tensor.size(0) >= 3, "");
+    TORCH_CHECK((natoms_tensor.dtype() == torch::kInt32), "Type of natoms should be int32");
     TORCH_CHECK(natoms_tensor.device().type() == torch::kCPU, "");
     TORCH_CHECK(box_tensor.device().type() == torch::kCPU, "");
 
@@ -686,9 +687,9 @@ std::vector<torch::Tensor> prod_env_mat_a(torch::Tensor coord_tensor, torch::Ten
 
     TORCH_CHECK(sec_r.back() == 0, "");
 
-    const int *natoms = natoms_tensor.data_ptr<int>();
-    int nloc = natoms[0];
-    int nall = natoms[1];
+    auto natoms = natoms_tensor.flatten();
+    int nloc = natoms[0].item<int>();
+    int nall = natoms[1].item<int>();
     int ntypes = natoms_tensor.size(0) - 2; //nloc and nall mean something.
     int nsamples = coord_tensor.size(0);
 
