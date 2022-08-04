@@ -1,5 +1,5 @@
 
-file(GLOB OP_SRC prod_force_se_a.cpp)
+file(GLOB OP_SRC prod_force.cpp prod_env_mat.cpp)
 # file(GLOB OP_GRADS_SRC )
 
 # Define our library target

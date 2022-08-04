@@ -8,8 +8,6 @@
 #include "prod_env_mat.h"
 #include "errors.h"
 
-#include<iostream>
-
 
 #if GOOGLE_CUDA
 template<typename FPTYPE>
@@ -143,7 +141,7 @@ _prod_env_mat_a_generics(torch::Tensor& descrpt_tensor, torch::Tensor& descrpt_d
     const int * p_type = type_tensor.data_ptr<int>();
 
     // loop over samples
-    for(int_64 ff = 0; ff < nsamples; ++ff){
+    for(int64_t ff = 0; ff < nsamples; ++ff){
         FPTYPE * em = p_em + ff*nloc*ndescrpt;
         FPTYPE * em_deriv = p_em_deriv + ff*nloc*ndescrpt*3;
         FPTYPE * rij = p_rij + ff*nloc*nnei*3;
@@ -172,12 +170,12 @@ _prod_env_mat_a_generics(torch::Tensor& descrpt_tensor, torch::Tensor& descrpt_d
                 box, mesh_tensor.data_ptr<int>(), mesh_tensor_size, nloc, nei_mode, rcut_r, max_cpy_trial, max_nnei_trial);
             // allocate temp memory, temp memory must not be used after this operation!
 
-            std::vector<int64_t> int_shape{sec_a.size() + int_64(nloc) * sec_a.size() + nloc};
+            std::vector<int64_t> int_shape{int64_t(sec_a.size()) + int64_t(nloc) * int64_t(sec_a.size()) + int64_t(nloc)};
             auto int_shape_option = torch::TensorOptions().dtype(torch::kInt32).layout(torch::kStrided)
                                                 .device(descrpt_tensor.device()).requires_grad(false);
             torch::Tensor int_temp = torch::empty(int_shape, int_shape_option);
 
-            std::vector<int64_t> uint64_shape{int_64(nloc) * max_nbor_size * 2};
+            std::vector<int64_t> uint64_shape{int64_t(nloc) * max_nbor_size * 2};
             //warning: original data type is uint64
             auto uint64_shape_option = torch::TensorOptions().dtype(torch::kInt64).layout(torch::kStrided)
                                                 .device(descrpt_tensor.device()).requires_grad(false);
@@ -185,12 +183,10 @@ _prod_env_mat_a_generics(torch::Tensor& descrpt_tensor, torch::Tensor& descrpt_d
             array_int = int_temp.data_ptr<int>();
             array_longlong = (unsigned long long*)uint64_temp.data_ptr();
 
-            std::printf("---------------12\n");
             // launch the gpu(nv) compute function
             deepmd::prod_env_mat_a_gpu_cuda(
                 em, em_deriv, rij, nlist,
                 coord, type, gpu_inlist, array_int, array_longlong, max_nbor_size, avg, std, nloc, frame_nall, rcut_r, rcut_r_smth, sec_a);
-            std::printf("---------------12-1\n");
             if(b_nlist_map) _map_nlist_gpu(nlist, idx_mapping, nloc, nnei);
             deepmd::delete_device_memory(firstneigh);
             #endif //GOOGLE_CUDA
@@ -341,8 +337,8 @@ _map_nlist_cpu(
     const int & nloc,
     const int & nnei)
 {
-  for (int_64 ii = 0; ii < nloc; ++ii){
-    for (int_64 jj = 0; jj < nnei; ++jj){
+  for (int64_t ii = 0; ii < nloc; ++ii){
+    for (int64_t jj = 0; jj < nnei; ++jj){
       int record = nlist[ii*nnei+jj];
       if (record >= 0) {		
 	nlist[ii*nnei+jj] = idx_mapping[record];	      
@@ -532,11 +528,11 @@ _build_nlist_gpu(
     std::vector<int*> firstneigh_host(nloc);
     int tt;
     for(tt = 0; tt < max_nnei_trial; ++tt){
-        std::vector<int64_t> jlist_shape{3*int_64(nloc)*mem_nnei};
+        std::vector<int64_t> jlist_shape{3*int64_t(nloc)*mem_nnei};
         *(tensor_list+1) = torch::empty(jlist_shape, nlist_shape_option);
         jlist = (*(tensor_list+1)).data_ptr<int>();
         ind_data = jlist + nloc * mem_nnei;
-        for(int_64 ii = 0; ii < nloc; ++ii){
+        for(int64_t ii = 0; ii < nloc; ++ii){
             firstneigh_host[ii] = jlist + ii * mem_nnei;
         }
         deepmd::memcpy_host_to_device(firstneigh, firstneigh_host);
@@ -776,6 +772,6 @@ std::vector<torch::Tensor> prod_env_mat_a(torch::Tensor coord_tensor, torch::Ten
 }
 
 
-TORCH_LIBRARY(ops_abi, m){
-	m.def("prod_env_mat_a", prod_env_mat_a);
+TORCH_LIBRARY(prod_env_mat, m){
+    m.def("prod_env_mat_a", prod_env_mat_a);
 }
