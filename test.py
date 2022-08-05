@@ -1,5 +1,7 @@
 import torch
 import numpy as np
+from deepmd.descriptor.se_a import ProdForceFunc
+from torch.autograd import gradcheck
 
 print('----')
 lib_path = r"/root/code/deepmd-kit-pytorch-dev/source/build/op/libop_abi.so"
@@ -55,6 +57,8 @@ def force_test():
         for i, name in enumerate(names):
             t = np.load(open('{}/force/{}.npy'.format(test_data_path, name), 'rb'))
             tensor = torch.from_numpy(t).squeeze(0)
+            if name == 'net_deriv_reshape':
+                tensor.requires_grad = True
             if float_test and tensor.dtype == torch.float64:
                 tensor = tensor.to(torch.float32)
             if gpu_test and name != 'natoms':
@@ -66,10 +70,18 @@ def force_test():
         force = op(*ll)
         print(torch.sum(force - input_numpy[-1]))
         print('----')
+
+        if gpu_test and not float_test:
+            inputs = ll[:4] + [nnei_a, nnei_r]
+            test = gradcheck(lambda net_deriv_reshape, descrpt_deriv, nlist, natoms, nnei_a, nnei_r: ProdForceFunc(net_deriv_reshape, descrpt_deriv, nlist, natoms, nnei_a, nnei_r), inputs)
+            print(test)
+
+    nnei_a = 138
+    nnei_r = 0
     
-    test_foce()
+    # test_foce()
     test_foce(gpu_test=True)
-    test_foce(gpu_test=True, float_test=True)
+    # test_foce(gpu_test=True, float_test=True)
 
 
 def virial_test():
@@ -100,6 +112,6 @@ def virial_test():
     test_foce(gpu_test=True)
     test_foce(gpu_test=True, float_test=True)
 # mat_a_test()
-# force_test()
-virial_test()
+force_test()
+# virial_test()
 
