@@ -513,4 +513,31 @@ class DescrptSeA(nn.Module):
                                                  reuse = True, 
                                                  trainable = self.trainable)
         return self.dout, self.qmat
+    
+
+    def prod_force_virial(self, 
+                          atom_ener : torch.Tensor, 
+                          natoms : torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+
+        net_deriv = torch.autograd.grad(atom_ener, self.descrpt_reshape).unsqueeze(0)
+
+        net_deriv_reshape = net_deriv.reshape([-1, natoms[0] * self.ndescrpt])        
+        force \
+            = ProdForceFunc.apply(net_deriv_reshape,
+                                          self.descrpt_deriv,
+                                          self.nlist,
+                                          natoms,
+                                          n_a_sel = self.nnei_a,
+                                          n_r_sel = self.nnei_r)
+        virial, atom_virial \
+            = ProdForceVirialFunc.apply(net_deriv_reshape,
+                                           self.descrpt_deriv,
+                                           self.rij,
+                                           self.nlist,
+                                           natoms,
+                                           n_a_sel = self.nnei_a,
+                                           n_r_sel = self.nnei_r)
+        
+        return force, virial, atom_virial
 
