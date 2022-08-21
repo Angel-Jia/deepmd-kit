@@ -50,6 +50,50 @@ prod_virial_se_a_generics(torch::Tensor &net_deriv_tensor, torch::Tensor &in_der
 
 }
 
+template<typename FPTYPE>
+static void
+prod_virial_se_a_grad_generics(torch::Tensor& grad_tensor, torch::Tensor& net_deriv_tensor,
+                                    torch::Tensor& in_deriv_tensor, torch::Tensor& rij_tensor,
+                                    torch::Tensor& nlist_tensor, torch::Tensor& natoms_tensor,
+                                    torch::Tensor& grad_net_tensor,
+                                    int64_t& n_a_sel, int64_t& n_r_sel,
+                                    int &nloc, int &nnei, int &nframes, int &ndescrpt){
+    // flat the tensors
+    FPTYPE * p_grad_net = grad_net_tensor.data_ptr<FPTYPE>();
+    const FPTYPE * p_grad = grad_tensor.data_ptr<FPTYPE>();
+    const FPTYPE * p_net_deriv = net_deriv_tensor.data_ptr<FPTYPE>();
+    const FPTYPE * p_in_deriv = in_deriv_tensor.data_ptr<FPTYPE>();
+    const FPTYPE * p_rij = rij_tensor.data_ptr<FPTYPE>();
+    const int * p_nlist	= nlist_tensor.data_ptr<int>();
+
+    // loop over frames
+    for (int64_t kk = 0; kk < nframes; ++kk){
+        FPTYPE * grad_net = p_grad_net + kk * nloc * ndescrpt;
+        const FPTYPE * grad = p_grad + kk * 9;
+        const FPTYPE * in_deriv = p_in_deriv + kk * nloc * ndescrpt * 3;
+        const FPTYPE * rij = p_rij + kk * nloc * nnei * 3;
+        const int * nlist = p_nlist + kk * nloc * nnei; 
+        if (net_deriv_tensor.device().type() == torch::kCUDA) {
+            #if GOOGLE_CUDA
+            deepmd::prod_virial_grad_a_gpu_cuda(    
+            grad_net, 
+            grad, in_deriv, rij, nlist, nloc, nnei);
+            #endif // GOOGLE_CUDA
+            
+            #if TENSORFLOW_USE_ROCM
+            deepmd::prod_virial_grad_a_gpu_rocm(    
+            grad_net, 
+            grad, in_deriv, rij, nlist, nloc, nnei);
+            #endif // TENSORFLOW_USE_ROCM
+        }
+        else if (net_deriv_tensor.device().type() == torch::kCPU) {
+            deepmd::prod_virial_grad_a_cpu(    
+            grad_net, 
+            grad, in_deriv, rij, nlist, nloc, nnei);
+        }
+    }
+}
+
 std::vector<torch::Tensor>
 prod_virial_se_a(torch::Tensor net_deriv_tensor, torch::Tensor in_deriv_tensor,
                  torch::Tensor rij_tensor,
@@ -207,6 +251,18 @@ torch::Tensor prod_virial_se_a_grad(torch::Tensor grad_tensor, torch::Tensor net
     assert(nloc * nnei * 3 == rij_tensor.size(1));
     assert(nloc * nnei == nlist_tensor.size(1));
     assert(nnei * 4 == ndescrpt);
+
+
+
+    if(net_deriv_tensor.dtype() == torch::kFloat32){
+        prod_virial_se_a_grad_generics<float>(grad_tensor, net_deriv_tensor, in_deriv_tensor, rij_tensor,
+                                             nlist_tensor, natoms_tensor, grad_net_tensor, n_a_sel, n_r_sel,
+                                             nloc, nnei, nframes, ndescrpt);
+    }else if(net_deriv_tensor.dtype() == torch::kFloat64){
+        prod_virial_se_a_grad_generics<double>(grad_tensor, net_deriv_tensor, in_deriv_tensor, rij_tensor,
+                                             nlist_tensor, natoms_tensor, grad_net_tensor, n_a_sel, n_r_sel,
+                                             nloc, nnei, nframes, ndescrpt);
+    }
 
     return grad_net_tensor;
 }

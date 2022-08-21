@@ -230,7 +230,6 @@ _prod_env_mat_a_generics(torch::Tensor& descrpt_tensor, torch::Tensor& descrpt_d
             #endif //TENSORFLOW_USE_ROCM
         }
         else if (descrpt_tensor.device().type() == torch::kCPU) {
-            std::printf("---------------cpu\n");
             deepmd::InputNlist inlist;
             // some buffers, be freed after the evaluation of this frame
             std::vector<int> idx_mapping;
@@ -638,17 +637,17 @@ std::vector<torch::Tensor> prod_env_mat_a(torch::Tensor coord_tensor, torch::Ten
                                             double rcut_a_d, double rcut_r_d, double rcut_r_smth_d,
                                             torch::Tensor sel_a_tensor, torch::Tensor sel_r_tensor)
 {
-    TORCH_CHECK(coord_tensor.sizes().size() == 2, "");
-    TORCH_CHECK(type_tensor.sizes().size() == 2, "");
-    TORCH_CHECK(natoms_tensor.sizes().size() == 1, "");
-    TORCH_CHECK(box_tensor.sizes().size() == 2, "");
-    TORCH_CHECK(mesh_tensor.sizes().size() == 1, "");
-    TORCH_CHECK(avg_tensor.sizes().size() == 2, "");
-    TORCH_CHECK(std_tensor.sizes().size() == 2, "");
-    TORCH_CHECK(natoms_tensor.size(0) >= 3, "");
+    TORCH_CHECK(coord_tensor.sizes().size() == 2, "Dim of coord should be 2");
+    TORCH_CHECK(type_tensor.sizes().size() == 2, "Dim of type should be 2");
+    TORCH_CHECK(natoms_tensor.sizes().size() == 1, "Dim of natoms should be 1");
+    TORCH_CHECK(box_tensor.sizes().size() == 2, "Dim of box should be 2");
+    TORCH_CHECK(mesh_tensor.sizes().size() == 1, "Dim of mesh should be 1");
+    TORCH_CHECK(avg_tensor.sizes().size() == 2, "Dim of avg should be 2");
+    TORCH_CHECK(std_tensor.sizes().size() == 2, "Dim of std should be 2");
+    TORCH_CHECK(natoms_tensor.size(0) >= 3, "number of atoms should be larger than (or equal to) 3");
     TORCH_CHECK((natoms_tensor.dtype() == torch::kInt32), "Type of natoms should be int32");
-    TORCH_CHECK(natoms_tensor.device().type() == torch::kCPU, "");
-    TORCH_CHECK(box_tensor.device().type() == torch::kCPU, "");
+    TORCH_CHECK(natoms_tensor.device().type() == torch::kCPU, "natoms must on cpu");
+    TORCH_CHECK(box_tensor.device().type() == torch::kCPU, "box must on cpu");
 
     int ndescrpt, ndescrpt_a, ndescrpt_r;
     int nnei, nnei_a, nnei_r, max_nbor_size;
@@ -667,7 +666,7 @@ std::vector<torch::Tensor> prod_env_mat_a(torch::Tensor coord_tensor, torch::Ten
     std::vector<int> sec_r;
 
     TORCH_CHECK(sel_a_tensor.sizes().size() == 1 && sel_a_tensor.dtype() == torch::kInt32, "sel_a shape error!");
-    TORCH_CHECK(sel_r_tensor.sizes().size() == 1 && sel_r_tensor.dtype() == torch::kInt32, "sel_a shape error!");
+    TORCH_CHECK(sel_r_tensor.sizes().size() == 1 && sel_r_tensor.dtype() == torch::kInt32, "sel_r shape error!");
     std::vector<int> sel_a(sel_a_tensor.data_ptr<int>(), sel_a_tensor.data_ptr<int>() + sel_a_tensor.size(0));
     std::vector<int> sel_r(sel_r_tensor.data_ptr<int>(), sel_r_tensor.data_ptr<int>() + sel_r_tensor.size(0));
 
@@ -685,7 +684,7 @@ std::vector<torch::Tensor> prod_env_mat_a(torch::Tensor coord_tensor, torch::Ten
     max_nnei_trial = 100;
     mem_nnei = 256;
 
-    TORCH_CHECK(sec_r.back() == 0, "");
+    TORCH_CHECK(sec_r.back() == 0, "sec_r error!");
 
     auto natoms = natoms_tensor.flatten();
     int nloc = natoms[0].item<int>();
@@ -693,19 +692,19 @@ std::vector<torch::Tensor> prod_env_mat_a(torch::Tensor coord_tensor, torch::Ten
     int ntypes = natoms_tensor.size(0) - 2; //nloc and nall mean something.
     int nsamples = coord_tensor.size(0);
 
-    TORCH_CHECK(nsamples == type_tensor.size(0), "");
-    TORCH_CHECK(nsamples == box_tensor.size(0), "");
-    TORCH_CHECK(ntypes == avg_tensor.size(0), "");
-    TORCH_CHECK(ntypes == std_tensor.size(0), "");
+    TORCH_CHECK(nsamples == type_tensor.size(0), "number of samples should match");
+    TORCH_CHECK(nsamples == box_tensor.size(0), "number of samples should match");
+    TORCH_CHECK(ntypes == avg_tensor.size(0), "number of avg should be ntype");
+    TORCH_CHECK(ntypes == std_tensor.size(0), "number of std should be ntype");
 
-    TORCH_CHECK(nall * 3 == coord_tensor.size(1), "");
-    TORCH_CHECK(nall == type_tensor.size(1), "");
-    TORCH_CHECK(9 == box_tensor.size(1), "");
-    TORCH_CHECK(ndescrpt == avg_tensor.size(1), "");
-    TORCH_CHECK(ndescrpt == std_tensor.size(1), "");
+    TORCH_CHECK(nall * 3 == coord_tensor.size(1), "number of atoms should match");
+    TORCH_CHECK(nall == type_tensor.size(1), "number of atoms should match");
+    TORCH_CHECK(9 == box_tensor.size(1), "number of box should be 9");
+    TORCH_CHECK(ndescrpt == avg_tensor.size(1), "number of avg should be ndescrpt");
+    TORCH_CHECK(ndescrpt == std_tensor.size(1), "number of std should be ndescrpt");
 
-    TORCH_CHECK(ntypes == sel_a.size(), "");
-    TORCH_CHECK(ntypes == sel_r.size(), "");
+    TORCH_CHECK(ntypes == sel_a.size(), "number of types should match the length of sel array");
+    TORCH_CHECK(ntypes == sel_r.size(), "number of types should match the length of sel array");
 
     int nei_mode = 0;
     bool b_nlist_map = false;

@@ -93,7 +93,7 @@ torch::Tensor prod_force_se_a(torch::Tensor net_deriv_tensor, torch::Tensor in_d
     TORCH_CHECK((natoms_tensor.size(0) >= 3), "number of atoms should be larger than (or equal to) 3");
 
     TORCH_CHECK((natoms_tensor.dtype() == torch::kInt32), "Type of natoms should be int64");
-    TORCH_CHECK(natoms_tensor.device().type() == torch::kCPU, "");
+    TORCH_CHECK(natoms_tensor.device().type() == torch::kCPU, "natoms_tensor should on cpu");
     auto natoms = natoms_tensor.flatten();
     int nloc = natoms[0].item<int>();
     int nall = natoms[1].item<int>();
@@ -150,7 +150,7 @@ torch::Tensor prod_force_se_a_grad(torch::Tensor grad_tensor, torch::Tensor net_
     TORCH_CHECK((nlist_shape.size() == 2), "Dim of nlist should be 2");
     TORCH_CHECK((natoms_tensor.sizes().size() == 1), "Dim of natoms should be 1");
     TORCH_CHECK((natoms_tensor.dtype() == torch::kInt32), "Type of natoms should be int32");
-    TORCH_CHECK((natoms_tensor.device().type() == torch::kCPU), "");
+    TORCH_CHECK((natoms_tensor.device().type() == torch::kCPU), "natoms_tensor should on cpu");
 
     TORCH_CHECK((natoms_tensor.size(0) >= 3), "number of atoms should be larger than (or equal to) 3");
 

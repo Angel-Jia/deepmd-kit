@@ -12,7 +12,7 @@ from deepmd.utils.type_embed import embed_atom_type
 from deepmd.env import GLOBAL_TF_FLOAT_PRECISION
 from deepmd.env import GLOBAL_NP_FLOAT_PRECISION
 
-lib_path = r"/root/code/deepmd-kit-pytorch-dev/source/build/op/libop_abi.so"
+lib_path = r"source/build/op/libop_abi.so"
 torch.ops.load_library(lib_path)
 
 
@@ -45,16 +45,16 @@ class ProdForceVirialFunc(torch.autograd.Function):
         ctx.save_for_backward(net_deriv_reshape, descrpt_deriv, rij, nlist, natoms)
         ctx.n_a_sel = n_a_sel
         ctx.n_r_sel = n_r_sel
-        force = ProdForceVirialFunc.forward_op(net_deriv_reshape, descrpt_deriv, rij, nlist, natoms)
-        return force
+        virial, atom_virial = ProdForceVirialFunc.forward_op(net_deriv_reshape, descrpt_deriv, rij, nlist, natoms)
+        return virial, atom_virial
 
     @staticmethod
-    def backward(ctx, grad_output):
+    def backward(ctx, grad_output, grad_atom):
         net_deriv_reshape, descrpt_deriv, rij, nlist, natoms = ctx.saved_tensors
         
-        virial, atom_virial = ProdForceVirialFunc.backward_op(grad_output, net_deriv_reshape, descrpt_deriv,
-                                                              rij, nlist, natoms, ctx.n_a_sel, ctx.n_r_sel)
-        return virial, None, atom_virial, None, None, None, None
+        virial = ProdForceVirialFunc.backward_op(grad_output, net_deriv_reshape, descrpt_deriv,
+                                                 rij, nlist, natoms, ctx.n_a_sel, ctx.n_r_sel)
+        return virial, None, None, None, None, None, None
 
 
 class DescrptSeA(nn.Module):
@@ -317,23 +317,26 @@ class DescrptSeA(nn.Module):
         t_ndescrpt = torch.tensor(self.ndescrpt, dtype=torch.int32, requires_grad=False)
         t_sel = torch.tensor(self.sel_a, dtype=torch.int32, requires_grad=False)
         t_original_sel = torch.tensor(self.original_sel if self.original_sel is not None else self.sel_a, dtype=torch.int32, requires_grad=False)
-        self.t_avg = torch.tensor(davg, dtype=GLOBAL_TF_FLOAT_PRECISION, requires_grad=False)
-        self.t_std = torch.tensor(dstd, dtype=GLOBAL_TF_FLOAT_PRECISION, requires_grad=False)
+        sel_a = torch.tensor(self.sel_a, dtype=torch.int32, requires_grad=False)
+        sel_r = torch.tensor(self.sel_r, dtype=torch.int32, requires_grad=False)
+        self.t_avg = torch.tensor(davg, dtype=GLOBAL_TF_FLOAT_PRECISION, requires_grad=False, device=coord_.device)
+        self.t_std = torch.tensor(dstd, dtype=GLOBAL_TF_FLOAT_PRECISION, requires_grad=False, device=coord_.device)
 
         coord = coord_.reshape([-1, natoms[1] * 3])
         box = box_.reshape([-1, 9])
         atype = atype_.reshape([-1, natoms[1]])
 
         self.descrpt, self.descrpt_deriv, self.rij, self.nlist \
-            = self.forward_op(coord, atype, natoms, box, mesh,
+            = self.prod_env_mat_a_forward(coord, atype, natoms, box, mesh,
                               self.t_avg,
                               self.t_std,
                               self.rcut_a,
                               self.rcut_r,
                               self.rcut_r_smth,
-                              self.sel_a,
-                              self.sel_r)
+                              sel_a,
+                              sel_r)
         self.descrpt_reshape = self.descrpt.reshape([-1, self.ndescrpt])
+        self.descrpt_reshape.requires_grad_(True)
 
         self.dout, self.qmat = self._pass_filter(self.descrpt_reshape, 
                                                  atype,
@@ -519,8 +522,7 @@ class DescrptSeA(nn.Module):
                           atom_ener : torch.Tensor, 
                           natoms : torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-
-        net_deriv = torch.autograd.grad(atom_ener, self.descrpt_reshape).unsqueeze(0)
+        net_deriv = torch.autograd.grad(atom_ener.sum(), self.descrpt_reshape, allow_unused=True)[0]
 
         net_deriv_reshape = net_deriv.reshape([-1, natoms[0] * self.ndescrpt])        
         force \
@@ -528,16 +530,27 @@ class DescrptSeA(nn.Module):
                                           self.descrpt_deriv,
                                           self.nlist,
                                           natoms,
-                                          n_a_sel = self.nnei_a,
-                                          n_r_sel = self.nnei_r)
+                                          self.nnei_a,
+                                          self.nnei_r)
         virial, atom_virial \
             = ProdForceVirialFunc.apply(net_deriv_reshape,
                                            self.descrpt_deriv,
                                            self.rij,
                                            self.nlist,
                                            natoms,
-                                           n_a_sel = self.nnei_a,
-                                           n_r_sel = self.nnei_r)
-        
+                                           self.nnei_a,
+                                           self.nnei_r)
         return force, virial, atom_virial
 
+    def test_mat_a(self, coord, atype, natoms, box, mesh, t_avg, t_std):
+        sel_a = torch.tensor(self.sel_a, dtype=torch.int32, requires_grad=False)
+        sel_r = torch.tensor(self.sel_r, dtype=torch.int32, requires_grad=False)
+        self.descrpt, self.descrpt_deriv, self.rij, self.nlist \
+            = self.prod_env_mat_a_forward(coord, atype, natoms, box, mesh,
+                              t_avg,
+                              t_std,
+                              self.rcut_a,
+                              self.rcut_r,
+                              self.rcut_r_smth,
+                              sel_a,
+                              sel_r)

@@ -98,7 +98,6 @@ class EnerFitting(nn.Module):
         # concat the results
         # concat once may be faster than multiple concat
         outs = torch.cat(outs_list, axis = 1)
-        print(outs.shape)
         return outs.reshape([-1])
 
     

@@ -4,13 +4,20 @@ project(DeePMD)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(USE_CUDA_TOOLKIT ON)
 
-set(PYTORCH_ROOT "/opt/miniconda3/envs/pytorch1.7/lib/python3.7/site-packages/torch")
+set(PYTORCH_ROOT "/mnt/vepfs/yaosk/anaconda3/envs/pytorch1.12/lib/python3.8/site-packages/torch")
 list(APPEND CMAKE_PREFIX_PATH "${PYTORCH_ROOT}/share/cmake/Torch/")
 find_package(Torch REQUIRED)
 
-set(Python3_ROOT_DIR "/opt/miniconda3/envs/pytorch1.7/")
+set(Python3_ROOT_DIR "/mnt/vepfs/yaosk/anaconda3/envs/pytorch1.12")
+# https://github.com/conda-forge/cmake-feedstock/issues/91
+set(Python3_FIND_STRATEGY LOCATION)
 list(APPEND CMAKE_PREFIX_PATH "${Python3_ROOT_DIR}")
+message("CMAKE_PREFIX_PATH: ${CMAKE_PREFIX_PATH}")
 find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
+message("python3头文件目录：" ${Python3_INCLUDE_DIRS})
+message("python3的版本信息：" ${Python3_VERSION})
+message("python3中numpy的版本信息：" ${Python3_NumPy_VERSION})
+message("python3的库文件信息：" ${Python3_LIBRARIES})
 # find threads
 find_package(Threads)
 

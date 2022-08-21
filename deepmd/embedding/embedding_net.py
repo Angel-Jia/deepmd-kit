@@ -29,7 +29,7 @@ class Embedding_net(nn.Module):
                 for ii in range(1, len(self.outputs_size)):
                     layers.append(nn.Linear(self.outputs_size[ii - 1], self.outputs_size[ii]))
                 self.layers['{}_{}'.format(center_atom_type_idx, nei_atom_type_idx)] = layers
-    
+
 
     def forward(self, xx, center_atom_type_idx, nei_atom_type_idx):
         layers = self.layers['{}_{}'.format(center_atom_type_idx, nei_atom_type_idx)]
